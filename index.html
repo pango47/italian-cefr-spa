@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Italian CEFR & Fonetica Explorer - Sillabazione, Accento Tonico & Livelli QCER (A1–C2)</title>
+  <meta name="description" content="Applicazione interattiva HTML5 per analizzare testi italiani: sillabazione fonologica, accento tonico (piana, sdrucciola, tronca), livelli QCER A1-C2, coniugazioni verbali e sintesi vocale.">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Embedded Italian CEFR & Verb Conjugation database -->
+  <script src="italian_data.js"></script>
+  <!-- Italian syllabification & accentuation engine (Accademia della Crusca) -->
+  <script src="syllables.js"></script>
+  <!-- Main application logic -->
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="nav-container">
+      <div class="brand-wrapper">
+        <div class="brand-icon">🇮🇹</div>
+        <div class="brand-title-group">
+          <h1>Italian CEFR Explorer <span style="font-size: 0.85rem; font-weight: 500; color: var(--accent-primary);">v1.0</span></h1>
+          <div class="brand-subtitle">Sillabazione, Accento Tonico & CEFR A1–C2 Analyzer</div>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Voice Dialect Badge -->
+        <div class="accent-selector-badge" id="btn-accent-toggle" title="Italian Speech Synthesis Voice">
+          <span>🗣️</span>
+          <span id="active-accent-label">🇮🇹 Italiano (Standard)</span>
+        </div>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button class="btn-icon" id="btn-theme-toggle" title="Attiva/Disattiva Tema Scuro">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="main-content">
+
+    <!-- Input Section Card -->
+    <section class="input-card">
+      <div class="input-header">
+        <div style="font-weight: 600; font-size: 0.95rem;">Testo Italiano da Analizzare</div>
+        <!-- Sample Presets -->
+        <div class="presets-container">
+          <span style="font-size: 0.75rem; color: var(--text-secondary); margin-right: 0.25rem;">Esempi:</span>
+          <button class="preset-chip" data-preset="a1">A1 Principiante</button>
+          <button class="preset-chip" data-preset="a2">A2 Elementare</button>
+          <button class="preset-chip" data-preset="b1">B1 Intermedio</button>
+          <button class="preset-chip" data-preset="b2">B2 Avanzato</button>
+          <button class="preset-chip" data-preset="c1">C1 Autonomo</button>
+          <button class="preset-chip" data-preset="c2">C2 Padronanza</button>
+          <button class="preset-chip" data-preset="subjunctive">Congiuntivo & Ipotesi</button>
+        </div>
+      </div>
+
+      <!-- Textarea for Italian text -->
+      <div class="textarea-wrapper">
+        <textarea
+          id="italian-input"
+          class="italian-input-area"
+          placeholder="Incolla o scrivi qui un testo o una frase in italiano (es. Ciao! Mi piacerebbe imparare l'italiano e viaggiare a Roma...)..."
+          rows="4"
+        ></textarea>
+      </div>
+
+      <!-- Action Toolbar -->
+      <div class="input-footer">
+        <div class="action-buttons-group">
+          <button class="btn btn-primary" id="btn-analyze">✨ Analizza Testo</button>
+          <button class="btn btn-outline" id="btn-paste">📋 Incolla Appunti</button>
+          <button class="btn btn-outline" id="btn-clear">🗑️ Cancella</button>
+          <button class="btn btn-outline" id="btn-speak-all" title="Ascolta l'intero testo con sintesi vocale">🔊 Ascolta Tutto</button>
+        </div>
+        <div class="stats-counter">
+          <span id="input-char-count">0 caratteri</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls & View Filters Toolbar -->
+    <section class="controls-bar">
+      <!-- Annotation Mode Toggle -->
+      <div class="control-group">
+        <span class="control-label">Annotazioni:</span>
+        <div class="toggle-switch-group">
+          <button class="toggle-option active" data-annotation="meaning">Traduzione Inglese</button>
+          <button class="toggle-option" data-annotation="syllables">Sillabazione Fonetica</button>
+        </div>
+      </div>
+
+      <!-- CEFR Badges Toggle -->
+      <div class="control-group">
+        <span class="control-label">Visualizza:</span>
+        <button class="btn btn-sm btn-outline active" id="toggle-badges" title="Mostra/Nascondi Badge Livello QCER">Badge QCER</button>
+      </div>
+
+      <!-- Voice Selector -->
+      <div class="control-group">
+        <span class="control-label">Voce Sintesi:</span>
+        <select id="setting-tts-voice" style="padding: 0.3rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-surface); color: var(--text-main); font-size: 0.8rem;">
+          <option value="">Voce Italiana Predefinita</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Analytics & Difficulty Summary Banner -->
+    <section class="analytics-banner">
+      <div class="analytics-metrics-row">
+        <div class="metric-card">
+          <span class="metric-val" id="metric-total-words">0</span>
+          <span class="metric-lbl">Parole Totali</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-val" id="metric-unique-words">0</span>
+          <span class="metric-lbl">Parole Uniche</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-val" id="metric-lex-density">0%</span>
+          <span class="metric-lbl">Ricchezza Lessicale</span>
+        </div>
+      </div>
+
+      <!-- CEFR Distribution Bar -->
+      <div class="cefr-distribution-bar-wrapper">
+        <div class="cefr-distribution-bar" id="cefr-distribution-bar">
+          <div class="cefr-bar-segment" style="width: 100%; background-color: var(--border-subtle);"></div>
+        </div>
+        <div class="cefr-legend-row">
+          <div class="cefr-legend-item"><span class="legend-color-dot bg-cefr-A1"></span> A1 Principiante</div>
+          <div class="cefr-legend-item"><span class="legend-color-dot bg-cefr-A2"></span> A2 Elementare</div>
+          <div class="cefr-legend-item"><span class="legend-color-dot bg-cefr-B1"></span> B1 Intermedio</div>
+          <div class="cefr-legend-item"><span class="legend-color-dot bg-cefr-B2"></span> B2 Intermedio Superiore</div>
+          <div class="cefr-legend-item"><span class="legend-color-dot bg-cefr-C1"></span> C1 Avanzato</div>
+          <div class="cefr-legend-item"><span class="legend-color-dot bg-cefr-C2"></span> C2 Padronanza</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View Mode Tabs Navigation -->
+    <nav class="tabs-navigation">
+      <button class="tab-btn active" data-tab="ruby-view">📖 Testo Annotato (Lettore)</button>
+      <button class="tab-btn" data-tab="cards-view">🗂️ Schede Vocabolario</button>
+      <button class="tab-btn" data-tab="vocab-view">📋 Tabella Vocabolario e Verbi</button>
+      <button class="tab-btn" data-tab="analytics-view">📊 Statistiche QCER & Metrica</button>
+      <button class="tab-btn" data-tab="guide-view">🔍 Guida Fonetica & Accento</button>
+    </nav>
+
+    <!-- Tab 1: Ruby Annotated Text View -->
+    <div class="tab-pane active" id="ruby-view">
+      <!-- Ruby Audio & View Toolbar -->
+      <div class="ruby-toolbar">
+        <div class="ruby-toolbar-left">
+          <button class="btn btn-sm btn-primary" id="btn-ruby-play" title="Riproduci il testo completo con evidenziazione parola per parola">
+            <span id="ruby-play-icon">▶️</span> <span id="ruby-play-text">Riproduci Testo</span>
+          </button>
+          <button class="btn btn-sm btn-outline" id="btn-ruby-pause" style="display: none;" title="Metti in pausa">
+            ⏸️ Pausa
+          </button>
+          <button class="btn btn-sm btn-outline" id="btn-ruby-stop" style="display: none;" title="Interrompi riproduzione">
+            ⏹️ Stop
+          </button>
+
+          <div class="control-group" style="margin-left: 0.5rem;">
+            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Velocità:</label>
+            <select id="ruby-speed-select" style="padding: 0.3rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-surface); color: var(--text-main); font-size: 0.8rem;">
+              <option value="0.6">0.6x (Lenta)</option>
+              <option value="0.8" selected>0.8x (Studio)</option>
+              <option value="1.0">1.0x (Normale)</option>
+              <option value="1.2">1.2x (Veloce)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ruby-toolbar-right">
+          <span class="ruby-play-status" id="ruby-play-status">💡 Passa il mouse sopra qualsiasi parola per ascoltarne la pronuncia</span>
+          <div class="ruby-zoom-controls">
+            <button class="btn-icon btn-sm" id="btn-font-decrease" title="Riduci dimensione caratteri">A-</button>
+            <button class="btn-icon btn-sm" id="btn-font-increase" title="Aumenta dimensione caratteri">A+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ruby-view-container" id="ruby-text-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Tab 2: Word Cards Grid -->
+    <div class="tab-pane" id="cards-view">
+      <div class="cards-view-toolbar">
+        <div class="control-group">
+          <label style="font-size: 0.85rem; color: var(--text-secondary);">Filtra per Livello:</label>
+          <select id="card-cefr-filter" style="padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-surface); color: var(--text-main);">
+            <option value="all">Tutti i Livelli</option>
+            <option value="A1">A1 Principiante</option>
+            <option value="A2">A2 Elementare</option>
+            <option value="B1">B1 Intermedio</option>
+            <option value="B2">B2 Intermedio Sup.</option>
+            <option value="C1">C1 Avanzato</option>
+            <option value="C2">C2 Padronanza</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label style="font-size: 0.85rem; color: var(--text-secondary);">Ordina per:</label>
+          <select id="card-sort-by" style="padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-surface); color: var(--text-main);">
+            <option value="order">Ordine di Apparizione</option>
+            <option value="frequency">Frequenza nel Testo</option>
+            <option value="cefr-asc">Livello QCER (A1 → C2)</option>
+            <option value="cefr-desc">Livello QCER (C2 → A1)</option>
+            <option value="alphabetical">Alfabetico (A-Z)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cards-grid" id="cards-grid-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Tab 3: Vocabulary & Verbs Table -->
+    <div class="tab-pane" id="vocab-view">
+      <div class="cards-view-toolbar">
+        <div class="control-group">
+          <label style="font-size: 0.85rem; color: var(--text-secondary);">Filtra QCER:</label>
+          <select id="vocab-cefr-filter" style="padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-surface); color: var(--text-main);">
+            <option value="all">Tutte le Parole</option>
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+          </select>
+        </div>
+
+        <div class="action-buttons-group">
+          <button class="btn btn-sm btn-outline" id="btn-export-csv">📥 Esporta CSV</button>
+          <button class="btn btn-sm btn-outline" id="btn-export-anki">📇 Esporta Mazzo Anki</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="vocab-table">
+          <thead>
+            <tr>
+              <th>Parola</th>
+              <th>Sillabazione (Accento)</th>
+              <th>Livello QCER</th>
+              <th>Grammatica / Tempo</th>
+              <th>Significato Inglese</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody id="vocab-table-body">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 4: Analytics Dashboard View -->
+    <div class="tab-pane" id="analytics-view">
+      <div id="analytics-content-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Tab 5: Phonetics & Syllabification Guide -->
+    <div class="tab-pane" id="guide-view">
+      <div class="guide-card">
+        <h3>📖 Regole di Sillabazione della Lingua Italiana (Accademia della Crusca)</h3>
+        <p>In italiano, la divisione in sillabe segue criteri fonologici precisi:</p>
+        <div class="guide-rule-box">
+          <strong>1. Consonante singola tra due vocali:</strong> fa sempre sillaba con la vocale che segue (es. <em>ca-sa</em>, <em>ma-re</em>, <em>ta-vo-lo</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>2. Consonanti doppie:</strong> si dividono SEMPRE in due sillabe distinte (es. <em>gat-to</em>, <em>ros-so</em>, <em>tut-to</em>, <em>mez-zo</em>). Anche il nesso <strong>cq</strong> si separa: <em>ac-qua</em>.
+        </div>
+        <div class="guide-rule-box">
+          <strong>3. Gruppi consonantici inseparabili:</strong> formano sillaba con la vocale seguente quando costituiti da muta con liquida (<em>b, c, d, f, g, p, t, v</em> + <em>l / r</em>: es. <em>li-bro</em>, <em>pa-dre</em>, <em>clas-se</em>, <em>ve-tro</em>) oppure dai digrammi <em>ch, gh, gn, gl, sc</em> (es. <em>ba-gno</em>, <em>fi-glio</em>, <em>pe-sce</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>4. La "S" impura (seguita da consonante):</strong> per le regole grammaticali italiane moderne, la <em>s</em> fa sillaba con la consonante successiva (es. <em>pe-sca</em>, <em>ba-sta</em>, <em>fi-ne-stra</em>, <em>sco-la</em>, <em>stra-da</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>5. Dittonghi e Iati:</strong> i dittonghi (vocale debole <em>i, u</em> atona + vocale forte <em>a, e, o</em>: es. <em>fio-re</em>, <em>pau-sa</em>, <em>pie-no</em>) non si dividono. Due vocali forti consecutive formano uno <strong>iato</strong> e si separano sempre (es. <em>po-e-ta</em>, <em>ma-e-stro</em>, <em>le-o-ne</em>).
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <h3>🎯 Classificazione dell'Accento Tonico</h3>
+        <div class="guide-rule-box">
+          <strong>• Parola Piana (Parossitona):</strong> l'accento tonico cade sulla <em>penultima</em> sillaba (es. <em>cása</em>, <em>amóre</em>, <em>lavóro</em>, <em>ragázzo</em>). È il modello largamente maggioritario nella lingua italiana (~80% dei vocaboli).
+        </div>
+        <div class="guide-rule-box">
+          <strong>• Parola Sdrucciola (Proparossitona):</strong> l'accento cade sulla <em>terzultima</em> sillaba (es. <em>tàvola</em>, <em>àlbero</em>, <em>mèdico</em>, <em>telèfono</em>, <em>sùbito</em>, <em>fàcile</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>• Parola Tronca (Ossitona):</strong> l'accento cade sull'<em>ultima</em> sillaba. Nelle parole polisillabiche tronche, l'accento grafico è <strong>obbligatorio</strong> (es. <em>caffè</em>, <em>città</em>, <em>perché</em>, <em>virtù</em>, <em>così</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>• Parola Bisdrucciola:</strong> l'accento cade sulla <em>quartultima</em> sillaba (frequente nelle terze persone plurali o con pronomi clitici: es. <em>àbitano</em>, <em>dimentìcamelo</em>, <em>tèlefonano</em>).
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <h3>🗣️ Guida Fonetica per Studenti di Italiano</h3>
+        <div class="guide-rule-box">
+          <strong>• C e G (Dolce vs Dura):</strong> davanti a <em>e, i</em> hanno suono dolce [tʃ, dʒ] (<em>cena</em>, <em>gelato</em>); davanti a <em>a, o, u</em> o con <em>h</em> (<em>che, chi, ghe, ghi</em>) hanno suono duro occlusivo [k, g] (<em>casa</em>, <em>chiave</em>, <em>gatto</em>, <em>spaghetti</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>• GL e GN:</strong> <em>gl</em> seguito da <em>i</em> produce il suono laterale palatale [ʎ] (<em>famiglia</em>, <em>figlio</em>); <em>gn</em> produce il suono nasale palatale [ɲ] (<em>gnocchi</em>, <em>bagno</em>).
+        </div>
+        <div class="guide-rule-box">
+          <strong>• E ed O aperte (/ɛ/, /ɔ/) vs chiuse (/e/, /o/):</strong> <em>caffè</em>, <em>è</em> (aperta) vs <em>perché</em>, <em>cena</em> (chiusa); <em>però</em>, <em>cuore</em> (aperta) vs <em>sole</em>, <em>voce</em> (chiusa).
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Interactive Word & Verb Inspector Modal -->
+  <div class="modal-backdrop" id="inspector-modal" onclick="if(event.target === this) closeModal('inspector-modal')">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div style="font-weight: 700; font-size: 1.1rem;">Ispezione Parola & Grammatica Italiana</div>
+        <button class="btn-icon" onclick="closeModal('inspector-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Word Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div style="font-size: 2.4rem; font-weight: 700; line-height: 1;" id="modal-word-title">parola</div>
+            <div style="font-size: 1.1rem; color: var(--accent-primary); font-weight: 600; margin-top: 0.35rem;" id="modal-word-syllables">pa·RO·la</div>
+          </div>
+          <button class="btn btn-outline" id="modal-btn-speak" title="Ascolta Pronuncia">🔊 Pronuncia</button>
+        </div>
+
+        <!-- CEFR & Stress Badges -->
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+          <div id="modal-meta-cefr"></div>
+          <span style="font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); background-color: var(--bg-surface-elevated);" id="modal-word-stress-type">Tipo: Piana</span>
+        </div>
+
+        <!-- Phonetic & Accent Rule -->
+        <div style="background-color: var(--bg-surface-elevated); padding: 0.85rem; border-radius: var(--radius-md); border-left: 3px solid var(--accent-primary);">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">Regola & Note Fonetiche</div>
+          <div id="modal-word-rule" style="font-size: 0.85rem; margin-top: 0.2rem; color: var(--text-main);"></div>
+        </div>
+
+        <!-- Meaning -->
+        <div>
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Traduzione Inglese</div>
+          <div id="modal-word-meaning" style="font-size: 1rem; margin-top: 0.25rem; font-weight: 500;"></div>
+        </div>
+
+        <!-- Verb Conjugation Table Section (Shown if verb) -->
+        <div id="modal-conjugation-section" style="display: none;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Coniugazione Verbale: <span id="modal-verb-lemma" style="color:var(--accent-primary);"></span></div>
+          <div style="overflow-x: auto; margin-top: 0.4rem;">
+            <table class="conjugation-table">
+              <thead>
+                <tr>
+                  <th>Persona</th>
+                  <th>Presente</th>
+                  <th>Imperfetto</th>
+                  <th>Pass. Prossimo</th>
+                  <th>Futuro</th>
+                  <th>Condizionale</th>
+                  <th>Congiuntivo</th>
+                  <th>Imperativo</th>
+                </tr>
+              </thead>
+              <tbody id="modal-conjugation-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Theme Section (Shown if mapped) -->
+        <div id="modal-theme-section" style="display: none; background-color: var(--bg-surface-elevated); padding: 0.85rem; border-radius: var(--radius-md);">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">Tema Curricolare: <span id="modal-theme-name" style="color:var(--accent-primary);"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div>Italian CEFR Explorer • Quadro Comune Europeo di Riferimento (QCER) & Fonetica dell'Accademia della Crusca</div>
+  </footer>
+
+</body>
+</html>
