@@ -575,21 +575,23 @@ body {
   color: var(--text-muted);
   user-select: none;
   align-self: flex-end;
-  margin-left: -0.35rem;
-  margin-right: 0.25rem;
-  padding-bottom: 0.25rem;
+  margin-left: -0.55rem;
+  margin-right: 0.35rem;
+  padding-bottom: 0.45rem;
 }
 
-/* Italian Word Block with Hover Play Button */
+/* Italian Word Block with Enhanced Hover Play Hit Area */
 .italian-word-block {
   position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   padding: 0.35rem 0.5rem;
+  padding-top: 1.15rem; /* Extends container upwards so hover area connects seamlessly with the play button */
+  margin-top: -0.8rem;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
   background-color: transparent;
 }
 
@@ -611,47 +613,65 @@ body {
   100% { box-shadow: 0 0 0 2px var(--accent-primary), 0 4px 12px rgba(2, 132, 199, 0.2); }
 }
 
-/* Floating Hover Play Button */
+/* Floating Hover Play Button with Seamless Hit-Test Bridge */
 .word-hover-play-btn {
   position: absolute;
-  top: -24px;
+  top: -8px; /* Sits naturally right above the word/rt, with zero air gap */
   left: 50%;
-  transform: translateX(-50%) scale(0.85);
+  transform: translateX(-50%) scale(0.9);
   background-color: var(--accent-primary);
   color: #ffffff;
   border: none;
   border-radius: var(--radius-full);
-  width: 22px;
-  height: 22px;
+  width: 26px; /* Larger, effortless click target */
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-md);
-  z-index: 10;
+  /* Grace period on hide (0.16s delay) prevents disappearing with shaky mouse movements */
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color var(--transition-fast);
+  transition-delay: 0.16s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+}
+
+/* Invisible hit-test bridge: extends mouse capture zone down into the word block */
+.word-hover-play-btn::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  bottom: -32px;
+  left: -20px;
+  right: -20px;
+  background: transparent;
+  pointer-events: auto;
 }
 
 .word-hover-play-btn:hover {
   background-color: var(--accent-primary-hover);
-  transform: translateX(-50%) scale(1.05);
+  transform: translateX(-50%) scale(1.12);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.45);
 }
 
-.italian-word-block:hover .word-hover-play-btn {
+.italian-word-block:hover .word-hover-play-btn,
+.word-hover-play-btn:hover {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(-50%) scale(1);
+  transition-delay: 0s; /* Appears instantly on hover */
 }
 
-/* Ruby Elements */
+/* Ruby Elements with Uniform Baseline Alignment */
 ruby {
   display: inline-flex;
   flex-direction: column-reverse;
   align-items: center;
   text-align: center;
   ruby-position: over;
+  vertical-align: bottom;
 }
 
 .italian-word-text {
@@ -666,9 +686,11 @@ rt {
   color: var(--text-secondary);
   font-weight: 500;
   line-height: 1.2;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
   user-select: none;
   white-space: nowrap;
+  min-height: 1.2em; /* Guarantees uniform vertical baseline across all words */
+  display: block;
 }
 
 /* Cards Grid */

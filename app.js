@@ -302,8 +302,7 @@ class ItalianAnalyzer {
       let gender = '';
       let meaning = '';
       let tense = '';
-      let person = '';
-      let theme = '';
+      let shortGloss = '';
 
       if (entry) {
         lemma = entry.l || cleanWord;
@@ -311,6 +310,7 @@ class ItalianAnalyzer {
         pos = entry.p || '';
         gender = entry.g || '';
         meaning = entry.m || '';
+        shortGloss = entry.sg || '';
         tense = entry.t || '';
         person = entry.pn || '';
         theme = entry.theme || '';
@@ -319,11 +319,13 @@ class ItalianAnalyzer {
         if (cleanWord.endsWith('are') || cleanWord.endsWith('ere') || cleanWord.endsWith('ire')) {
           pos = 'v';
           cefr = 'B1';
-          meaning = `to ${cleanWord}`;
+          meaning = 'verb';
+          shortGloss = 'verb';
         } else if (cleanWord.endsWith('mente')) {
           pos = 'adv';
           cefr = 'B2';
           meaning = 'adverb';
+          shortGloss = 'adverb';
         } else if (cleanWord.length > 9) {
           cefr = 'B2';
         } else if (cleanWord.length > 6) {
@@ -346,6 +348,7 @@ class ItalianAnalyzer {
         pos: pos,
         gender: gender,
         meaning: meaning,
+        shortGloss: shortGloss,
         tense: tense,
         person: person,
         theme: theme,
@@ -474,6 +477,45 @@ const SAMPLE_PRESETS = {
 // 5. UI Renderers
 // ==========================================
 
+// Intelligent Ruby Gloss Formatter
+function getRubyGloss(tok) {
+  if (state.rubyAnnotation === 'syllables') {
+    return tok.syllables?.hyphenated || tok.text;
+  }
+
+  // 1. If explicit concise short gloss is available
+  if (tok.shortGloss) {
+    return tok.shortGloss;
+  }
+
+  // 2. If meaning exists, format it concisely for ruby display
+  if (tok.meaning) {
+    let m = tok.meaning;
+    // Strip tense brackets: e.g. "[Presente]" or "[dovere]"
+    m = m.replace(/\[.*?\]/g, '').trim();
+    // Strip detailed gender notes: e.g. "(masculine singular before consonant)" -> ""
+    m = m.replace(/\(masculine singular.*?\)/gi, '')
+         .replace(/\(feminine singular.*?\)/gi, '')
+         .replace(/\(masculine plural.*?\)/gi, '')
+         .replace(/\(feminine plural.*?\)/gi, '')
+         .replace(/\(.*?\)/g, '').trim();
+
+    // Split on comma, semicolon, slash and pick the most concise English meaning
+    const parts = m.split(/[;,/]/).map(s => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      let candidate = parts[0];
+      if (parts.length > 1 && (parts[0].length + parts[1].length < 15)) {
+        candidate = `${parts[0]} / ${parts[1]}`;
+      }
+      return candidate.length > 22 ? candidate.slice(0, 20) + '…' : candidate;
+    }
+    return m.length > 22 ? m.slice(0, 20) + '…' : m;
+  }
+
+  // 3. Uniform height placeholder
+  return '';
+}
+
 // Render Annotated Ruby Text
 function renderRubyView() {
   const container = document.getElementById('ruby-text-container');
@@ -516,7 +558,7 @@ function renderRubyView() {
     hoverPlayBtn.title = `Ascolta "${tok.text}"`;
     hoverPlayBtn.setAttribute('aria-label', `Riproduci pronuncia per ${tok.text}`);
     hoverPlayBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
         <polygon points="6 4 20 12 6 20 6 4"/>
       </svg>
     `;
@@ -532,11 +574,9 @@ function renderRubyView() {
     wordSpan.textContent = tok.text;
 
     const rt = document.createElement('rt');
-    if (state.rubyAnnotation === 'syllables') {
-      rt.textContent = tok.syllables?.hyphenated || tok.text;
-    } else {
-      rt.textContent = tok.meaning ? (tok.meaning.length > 20 ? tok.meaning.slice(0, 18) + '...' : tok.meaning) : '';
-    }
+    const gloss = getRubyGloss(tok);
+    // Use non-breaking space if empty so the ruby element retains identical vertical height
+    rt.textContent = gloss || '\u00A0';
 
     ruby.appendChild(wordSpan);
     ruby.appendChild(rt);
